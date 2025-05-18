@@ -1,8 +1,7 @@
 [package]
-name = "chicago"
+name = "game"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-game={path="../game"}
 rand="0.9.1"

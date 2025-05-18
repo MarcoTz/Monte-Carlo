@@ -4,6 +4,12 @@ pub struct Die {
     rng: SmallRng,
 }
 
+impl Default for Die {
+    fn default() -> Die {
+        Die::new()
+    }
+}
+
 impl Die {
     pub fn new() -> Die {
         Die {

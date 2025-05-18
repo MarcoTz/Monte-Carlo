@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 chicago={path="../../lib/chicago"}
+game={path="../../lib/game"}

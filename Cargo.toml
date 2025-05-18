@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "bin/app",
+    "lib/game",
     "lib/chicago"
 ]
 

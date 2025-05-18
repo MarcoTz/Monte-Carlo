@@ -27,7 +27,6 @@ impl Player {
                 .collect();
             result.extend(saved.iter());
             if result.iter().all(|res| *res == 1) {
-                println!("Player {} got chic, {:?}", self.name, result);
                 return u64::MAX;
             }
             last_result = rules.method.evaluate(result);
@@ -44,7 +43,7 @@ impl Player {
             num_rolls: rng().random_range(1..=3),
             method: ScoringMethod::rand(),
         };
-        let res = self.play(die, &rules, u64::max_value());
+        let res = self.play(die, &rules, u64::MAX);
         (res, rules)
     }
 }
