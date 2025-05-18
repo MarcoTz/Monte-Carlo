@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "app",
+    "chicago"
+]
+
+resolver = "2"
+default-members = ["app"]
