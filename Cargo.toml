@@ -1,8 +1,8 @@
 [workspace]
 members = [
-    "app",
-    "chicago"
+    "bin/app",
+    "lib/chicago"
 ]
 
 resolver = "2"
-default-members = ["app"]
+default-members = ["bin/app"]

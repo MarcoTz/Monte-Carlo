@@ -109,6 +109,26 @@ pub fn play_round(players: &[Player], starting_ind: usize, die: &mut Die) -> Rou
     }
 }
 
+pub fn roll_start(num_players: usize, die: &mut Die) -> usize {
+    let mut player_results = vec![];
+    for _ in 0..num_players {
+        let player_result = die.roll();
+        player_results.push(player_result);
+    }
+    let max_roll = player_results.iter().max().unwrap();
+    let max_players: Vec<(usize, u8)> = player_results
+        .iter()
+        .enumerate()
+        .filter_map(|(ind, res)| (res == max_roll).then_some((ind, *res)))
+        .collect();
+    if max_players.len() > 1 {
+        let new_res = roll_start(max_players.len(), die);
+        max_players.get(new_res).unwrap().0
+    } else {
+        max_players.first().unwrap().0
+    }
+}
+
 pub fn next_start(players: &[Player], die: &mut Die) -> usize {
     let max_tokens = players.iter().map(|pl| pl.num_tokens).max().unwrap();
     let mut candidates: Vec<usize> = (0..players.len())
@@ -145,6 +165,7 @@ pub fn play_pickup(
             let winner = players.get(result.winner).unwrap();
             placements.push(winner.name.clone());
             players.remove(result.winner);
+            start_ind = roll_start(players.len(), die);
             continue;
         }
         let loser = players.get_mut(result.loser).unwrap();
