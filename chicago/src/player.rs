@@ -26,6 +26,10 @@ impl Player {
                 .filter_map(|res| (*res == 1 || *res == 6).then_some(*res))
                 .collect();
             result.extend(saved.iter());
+            if result.iter().all(|res| *res == 1) {
+                println!("Player {} got chic, {:?}", self.name, result);
+                return u64::MAX;
+            }
             last_result = rules.method.evaluate(result);
             if rules.method.compare(last_result, current_max).is_gt() {
                 return last_result;

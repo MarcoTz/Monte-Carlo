@@ -6,6 +6,10 @@ use die::Die;
 use player::Player;
 use scoring::ScoringMethod;
 
+pub struct GameResult {
+    pub placements: Vec<String>,
+}
+
 pub struct RoundResult {
     pub loser: usize,
     pub winner: usize,
@@ -17,12 +21,13 @@ pub struct RoundRules {
     num_rolls: u8,
 }
 
-pub fn play_game(num_players: u8) {
+pub fn play_game(num_players: u8) -> GameResult {
+    let mut placements = vec![];
     let mut die = Die::new();
     let mut players: Vec<Player> = (0..num_players)
         .map(|i| Player::new(&format!("player_{i}")))
         .collect();
-    play_pickup(&mut players, num_players + 1, &mut die);
+    play_pickup(&mut players, num_players + 1, &mut die, &mut placements);
     println!("");
     println!("starting removing tokens");
     println!(
@@ -36,13 +41,21 @@ pub fn play_game(num_players: u8) {
     println!("");
     players = players
         .into_iter()
-        .filter(|pl| pl.num_tokens != 0)
+        .enumerate()
+        .filter_map(|(ind, pl)| {
+            if pl.num_tokens == 0 {
+                placements.push(pl.name.clone());
+                None
+            } else {
+                Some(pl)
+            }
+        })
         .collect();
 
-    play_laydown(&mut players, &mut die);
+    play_laydown(&mut players, &mut die, &mut placements);
 
-    println!("");
-    println!("Round has ended, {} lost", players[0].name);
+    placements.reverse();
+    GameResult { placements }
 }
 
 pub fn play_round(players: &[Player], starting_ind: usize, die: &mut Die) -> RoundResult {
@@ -53,6 +66,12 @@ pub fn play_round(players: &[Player], starting_ind: usize, die: &mut Die) -> Rou
 
     let starting_player = &players[starting_ind];
     let (starting_score, rules) = starting_player.play_start(die);
+    if starting_score == u64::MAX {
+        return RoundResult {
+            winner: starting_ind,
+            loser: starting_ind,
+        };
+    }
     println!("round rules: {rules:?}");
     loser_ind = starting_ind;
     winner_ind = starting_ind;
@@ -65,6 +84,12 @@ pub fn play_round(players: &[Player], starting_ind: usize, die: &mut Die) -> Rou
         let next_ind = (starting_ind + i) % players.len();
         let next_player = &players[next_ind];
         let next_score = next_player.play(die, &rules, winner_score);
+        if next_score == u64::MAX {
+            return RoundResult {
+                winner: next_ind,
+                loser: next_ind,
+            };
+        }
 
         if rules.method.compare(next_score, loser_score).is_le() {
             loser_score = next_score;
@@ -104,12 +129,24 @@ pub fn next_start(players: &[Player], die: &mut Die) -> usize {
     candidates[0]
 }
 
-pub fn play_pickup(players: &mut [Player], num_tokens: u8, die: &mut Die) {
+pub fn play_pickup(
+    players: &mut Vec<Player>,
+    num_tokens: u8,
+    die: &mut Die,
+    placements: &mut Vec<String>,
+) {
     let mut start_ind = 0;
 
-    for _ in 0..num_tokens {
+    let mut remaining_tokens = num_tokens;
+    while remaining_tokens != 0 {
         println!("starting player: {}", players[start_ind].name);
         let result = play_round(&players, start_ind, die);
+        if result.winner == result.loser {
+            let winner = players.get(result.winner).unwrap();
+            placements.push(winner.name.clone());
+            players.remove(result.winner);
+            continue;
+        }
         let loser = players.get_mut(result.loser).unwrap();
         loser.num_tokens += 1;
         println!(
@@ -117,24 +154,34 @@ pub fn play_pickup(players: &mut [Player], num_tokens: u8, die: &mut Die) {
             loser.name, loser.num_tokens
         );
         start_ind = result.loser;
+        remaining_tokens -= 1;
     }
 }
 
-pub fn play_laydown(players: &mut Vec<Player>, die: &mut Die) {
+pub fn play_laydown(players: &mut Vec<Player>, die: &mut Die, placements: &mut Vec<String>) {
     let num_tokens: u8 = players.iter().map(|pl| pl.num_tokens).sum();
     let mut start_ind;
 
-    for _ in 0..(num_tokens - 1) {
+    let mut remaining_tokens = num_tokens;
+    while remaining_tokens != 0 {
         start_ind = next_start(&players, die);
         let result = play_round(&players, start_ind, die);
+
         let winner = players.get_mut(result.winner).unwrap();
-        winner.num_tokens -= 1;
+        if result.winner == result.loser {
+            remaining_tokens -= winner.num_tokens;
+            winner.num_tokens = 0;
+        } else {
+            winner.num_tokens -= 1;
+            remaining_tokens -= 1;
+        }
         println!(
             "winner is {}, now has {} tokens",
             winner.name, winner.num_tokens
         );
         if winner.num_tokens == 0 {
             println!("{} finished the round", winner.name);
+            placements.push(winner.name.clone());
             players.remove(result.winner);
         }
     }
