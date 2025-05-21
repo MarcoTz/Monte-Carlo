@@ -1,8 +1,12 @@
-use super::RoundRules;
+use super::{
+    report::{report_many, ChicMetrics},
+    RoundRules,
+};
+use game::GameResult;
 use std::collections::HashMap;
 
 #[derive(Debug)]
-pub struct GameResult {
+pub struct ChicResult {
     pub placements: Vec<String>,
     pub round_results: Vec<RoundResult>,
 }
@@ -29,17 +33,24 @@ pub struct RoundResult {
     pub rules: RoundRules,
 }
 
-impl GameResult {
-    pub fn new() -> GameResult {
-        GameResult {
+impl ChicResult {
+    pub fn new() -> ChicResult {
+        ChicResult {
             placements: vec![],
             round_results: vec![],
         }
     }
 }
 
-impl Default for GameResult {
-    fn default() -> GameResult {
-        GameResult::new()
+impl GameResult for ChicResult {
+    type Metrics = ChicMetrics;
+    fn evaluate(results: Vec<Self>) -> Self::Metrics {
+        report_many(results)
+    }
+}
+
+impl Default for ChicResult {
+    fn default() -> ChicResult {
+        ChicResult::new()
     }
 }

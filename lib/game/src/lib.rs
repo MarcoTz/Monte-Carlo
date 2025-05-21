@@ -1,6 +1,10 @@
+mod reports;
+
+pub use reports::write_csv;
+
 pub trait Game: Sized {
     type Params;
-    type Results;
+    type Results: GameResult;
 
     fn init(params: &Self::Params) -> Self;
     fn run(self) -> Self::Results;
@@ -12,4 +16,10 @@ pub trait Game: Sized {
         }
         results
     }
+}
+
+pub trait GameResult: Sized {
+    type Metrics: serde::Serialize + for<'a> serde::Deserialize<'a>;
+
+    fn evaluate(results: Vec<Self>) -> Self::Metrics;
 }

@@ -1,65 +1,55 @@
 use super::{
-    results::{GameResult, RoundType},
+    results::{ChicResult, RoundType},
     scoring::ScoringMethod,
 };
-use csv::WriterBuilder;
-use std::{fs::OpenOptions, path::PathBuf};
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct StartResult {
-    round_type: RoundType,
+#[derive(Default, Debug, serde::Serialize, serde::Deserialize)]
+pub struct ChicMetrics {
     num_games: u64,
-    wins_duenne: u64,
-    wins_dicke: u64,
-    wins_dicke1: u64,
-    wins_dicke6: u64,
-    wins_dicke16: u64,
+    wins_duenne_pickup: u64,
+    wins_dicke_pickup: u64,
+    wins_dicke1_pickup: u64,
+    wins_dicke6_pickup: u64,
+    wins_dicke16_pickup: u64,
+    wins_duenne_laydown: u64,
+    wins_dicke_laydown: u64,
+    wins_dicke1_laydown: u64,
+    wins_dicke6_laydown: u64,
+    wins_dicke16_laydown: u64,
 }
 
-impl StartResult {
-    pub fn new(ty: RoundType) -> StartResult {
-        StartResult {
-            round_type: ty,
-            num_games: 0,
-            wins_duenne: 0,
-            wins_dicke: 0,
-            wins_dicke1: 0,
-            wins_dicke6: 0,
-            wins_dicke16: 0,
-        }
-    }
-}
-
-impl StartResult {
-    pub fn combine(self, other: StartResult) -> StartResult {
-        StartResult {
-            round_type: self.round_type,
+impl ChicMetrics {
+    pub fn combine(self, other: ChicMetrics) -> ChicMetrics {
+        ChicMetrics {
             num_games: self.num_games + other.num_games,
-            wins_duenne: self.wins_duenne + other.wins_duenne,
-            wins_dicke: self.wins_dicke + other.wins_dicke,
-            wins_dicke1: self.wins_dicke1 + other.wins_dicke1,
-            wins_dicke6: self.wins_dicke6 + other.wins_dicke6,
-            wins_dicke16: self.wins_dicke16 + other.wins_dicke16,
+            wins_duenne_pickup: self.wins_duenne_pickup + other.wins_duenne_pickup,
+            wins_dicke_pickup: self.wins_dicke_pickup + other.wins_dicke_pickup,
+            wins_dicke1_pickup: self.wins_dicke1_pickup + other.wins_dicke1_pickup,
+            wins_dicke6_pickup: self.wins_dicke6_pickup + other.wins_dicke6_pickup,
+            wins_dicke16_pickup: self.wins_dicke16_pickup + other.wins_dicke16_pickup,
+            wins_duenne_laydown: self.wins_duenne_laydown + other.wins_duenne_laydown,
+            wins_dicke_laydown: self.wins_dicke_laydown + other.wins_dicke_laydown,
+            wins_dicke1_laydown: self.wins_dicke1_laydown + other.wins_dicke1_laydown,
+            wins_dicke6_laydown: self.wins_dicke6_laydown + other.wins_dicke6_laydown,
+            wins_dicke16_laydown: self.wins_dicke16_laydown + other.wins_dicke16_laydown,
         }
     }
 }
 
-pub fn report_many(results: Vec<GameResult>) -> (StartResult, StartResult) {
-    let mut report_pickup = StartResult::new(RoundType::Pickup);
-    let mut report_laydown = StartResult::new(RoundType::Laydown);
+pub fn report_many(results: Vec<ChicResult>) -> ChicMetrics {
+    let mut metrics = ChicMetrics {
+        num_games: results.len() as u64,
+        ..Default::default()
+    };
     for result in results {
-        report_pickup.num_games += 1;
-        report_laydown.num_games += 1;
-        let (next_pickup, next_laydown) = report_game(result);
-        report_pickup = report_pickup.combine(next_pickup);
-        report_laydown = report_laydown.combine(next_laydown);
+        let next_metric = report_game(result);
+        metrics = metrics.combine(next_metric);
     }
-    (report_pickup, report_laydown)
+    metrics
 }
 
-pub fn report_game(result: GameResult) -> (StartResult, StartResult) {
-    let mut wins_pickup = StartResult::new(RoundType::Pickup);
-    let mut wins_laydown = StartResult::new(RoundType::Laydown);
+pub fn report_game(result: ChicResult) -> ChicMetrics {
+    let mut report = ChicMetrics::default();
 
     for round_res in result.round_results {
         let winner = round_res.winner;
@@ -68,33 +58,18 @@ pub fn report_game(result: GameResult) -> (StartResult, StartResult) {
             continue;
         }
 
-        let current_results = match round_res.round_type {
-            RoundType::Laydown => &mut wins_laydown,
-            RoundType::Pickup => &mut wins_pickup,
-        };
-
-        match round_res.rules.method {
-            ScoringMethod::Duenne => current_results.wins_duenne += 1,
-            ScoringMethod::Dicke => current_results.wins_dicke += 1,
-            ScoringMethod::Dicke1 => current_results.wins_dicke1 += 1,
-            ScoringMethod::Dicke6 => current_results.wins_dicke6 += 1,
-            ScoringMethod::Dicke16 => current_results.wins_dicke16 += 1,
+        match (round_res.round_type, round_res.rules.method) {
+            (RoundType::Laydown, ScoringMethod::Duenne) => report.wins_duenne_laydown += 1,
+            (RoundType::Laydown, ScoringMethod::Dicke) => report.wins_dicke_laydown += 1,
+            (RoundType::Laydown, ScoringMethod::Dicke1) => report.wins_dicke1_laydown += 1,
+            (RoundType::Laydown, ScoringMethod::Dicke6) => report.wins_dicke6_laydown += 1,
+            (RoundType::Laydown, ScoringMethod::Dicke16) => report.wins_dicke16_laydown += 1,
+            (RoundType::Pickup, ScoringMethod::Duenne) => report.wins_duenne_pickup += 1,
+            (RoundType::Pickup, ScoringMethod::Dicke) => report.wins_dicke_pickup += 1,
+            (RoundType::Pickup, ScoringMethod::Dicke1) => report.wins_dicke1_pickup += 1,
+            (RoundType::Pickup, ScoringMethod::Dicke6) => report.wins_dicke6_pickup += 1,
+            (RoundType::Pickup, ScoringMethod::Dicke16) => report.wins_dicke16_pickup += 1,
         }
     }
-    (wins_pickup, wins_laydown)
-}
-
-pub fn write_csv(data: StartResult, out_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
-    let write_headers = !out_path.exists();
-    let file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .append(true)
-        .open(out_path)?;
-    let mut wtr = WriterBuilder::new()
-        .has_headers(write_headers)
-        .from_writer(file);
-    wtr.serialize(data)?;
-    wtr.flush()?;
-    Ok(())
+    report
 }

@@ -7,7 +7,7 @@ pub mod scoring;
 use die::Die;
 use game::Game;
 use player::Player;
-use results::{GameResult, RoundEnd, RoundResult, RoundType};
+use results::{ChicResult, RoundEnd, RoundResult, RoundType};
 use scoring::ScoringMethod;
 use std::collections::HashMap;
 
@@ -15,7 +15,7 @@ pub struct Chicago {
     players: Vec<Player>,
     die: Die,
     remaining_tokens: u64,
-    results: GameResult,
+    results: ChicResult,
 }
 
 pub struct GameConfig {
@@ -30,7 +30,7 @@ impl GameConfig {
 
 impl Game for Chicago {
     type Params = GameConfig;
-    type Results = GameResult;
+    type Results = ChicResult;
 
     fn init(params: &GameConfig) -> Self {
         Chicago {
@@ -39,7 +39,7 @@ impl Game for Chicago {
                 .map(|i| Player::new(&format!("player_{i}")))
                 .collect(),
             die: Die::new(),
-            results: GameResult::new(),
+            results: ChicResult::new(),
         }
     }
 
@@ -210,7 +210,7 @@ impl Chicago {
                 RoundEnd::Chic => {
                     self.results.placements.push(result.winner.clone());
                     self.remove_player_by_name(&result.winner);
-                    if self.players.len() == 0 {
+                    if self.players.is_empty() {
                         return;
                     }
                     start_ind = self.roll_start(self.players.len());
