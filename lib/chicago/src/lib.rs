@@ -1,17 +1,17 @@
 pub mod die;
 pub mod player;
+pub mod report;
 pub mod results;
 pub mod scoring;
 
 use die::Die;
 use game::Game;
 use player::Player;
-use results::{GameResult, RoundEnd, RoundResult};
+use results::{GameResult, RoundEnd, RoundResult, RoundType};
 use scoring::ScoringMethod;
 use std::collections::HashMap;
 
 pub struct Chicago {
-    debug: bool,
     players: Vec<Player>,
     die: Die,
     remaining_tokens: u64,
@@ -20,22 +20,11 @@ pub struct Chicago {
 
 pub struct GameConfig {
     num_players: u64,
-    debug: bool,
 }
 
 impl GameConfig {
     pub fn new(num_players: u64) -> GameConfig {
-        GameConfig {
-            num_players,
-            debug: false,
-        }
-    }
-
-    pub fn new_debug(num_players: u64) -> GameConfig {
-        GameConfig {
-            num_players,
-            debug: true,
-        }
+        GameConfig { num_players }
     }
 }
 
@@ -46,7 +35,6 @@ impl Game for Chicago {
     fn init(params: &GameConfig) -> Self {
         Chicago {
             remaining_tokens: params.num_players + 1,
-            debug: params.debug,
             players: (0..params.num_players)
                 .map(|i| Player::new(&format!("player_{i}")))
                 .collect(),
@@ -55,8 +43,7 @@ impl Game for Chicago {
         }
     }
 
-    fn run(mut self, debug: bool) -> Self::Results {
-        self.debug = debug;
+    fn run(mut self) -> Self::Results {
         self.play_game();
         self.results
     }
@@ -108,7 +95,7 @@ impl Chicago {
         self.results.placements.reverse();
     }
 
-    pub fn play_round(&mut self, starting_ind: usize) -> RoundResult {
+    pub fn play_round(&mut self, starting_ind: usize, round_type: RoundType) -> RoundResult {
         let mut loser_ind;
         let mut winner_ind;
         let mut loser_score;
@@ -120,6 +107,7 @@ impl Chicago {
         player_results.insert(starting_player.name.clone(), starting_score);
         if starting_score == u64::MAX {
             return RoundResult {
+                round_type,
                 winner: starting_player.name.clone(),
                 starting_player: starting_player.name.clone(),
                 player_results,
@@ -139,6 +127,7 @@ impl Chicago {
             player_results.insert(next_player.name.clone(), next_score);
             if next_score == u64::MAX {
                 return RoundResult {
+                    round_type,
                     winner: next_player.name.clone(),
                     starting_player: starting_player.name.clone(),
                     player_results,
@@ -158,6 +147,7 @@ impl Chicago {
             }
         }
         RoundResult {
+            round_type,
             round_end: RoundEnd::Normal {
                 loser: self.players[loser_ind].name.clone(),
             },
@@ -215,15 +205,18 @@ impl Chicago {
         let mut start_ind = 0;
 
         while self.remaining_tokens != 0 {
-            let result = self.play_round(start_ind);
+            let result = self.play_round(start_ind, RoundType::Pickup);
             match result.round_end {
                 RoundEnd::Chic => {
                     self.results.placements.push(result.winner.clone());
                     self.remove_player_by_name(&result.winner);
+                    if self.players.len() == 0 {
+                        return;
+                    }
                     start_ind = self.roll_start(self.players.len());
                 }
                 RoundEnd::Normal { ref loser } => {
-                    let (loser_ind, loser) = self.get_player_by_name(&loser);
+                    let (loser_ind, loser) = self.get_player_by_name(loser);
                     loser.num_tokens += 1;
                     start_ind = loser_ind;
                     self.remaining_tokens -= 1;
@@ -240,7 +233,7 @@ impl Chicago {
         let mut remaining_tokens = num_tokens;
         while remaining_tokens != 0 {
             start_ind = self.next_start();
-            let result = self.play_round(start_ind);
+            let result = self.play_round(start_ind, RoundType::Laydown);
 
             match result.round_end {
                 RoundEnd::Chic => {

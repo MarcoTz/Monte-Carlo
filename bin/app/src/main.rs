@@ -1,22 +1,15 @@
-use chicago::{Chicago, GameConfig};
+use chicago::{
+    report::{report_many, write_csv},
+    Chicago, GameConfig,
+};
 use game::Game;
+use std::path::PathBuf;
 
-const NUM_PLAYERS: u64 = 10;
-const NUM_ROUNDS: u64 = 10;
+const NUM_PLAYERS: u64 = 5;
+const NUM_ROUNDS: u64 = 100000;
 
 fn main() {
-    let res = Chicago::run_n(&GameConfig::new(NUM_PLAYERS), NUM_ROUNDS, true);
-    println!();
-
-    for game_res in res {
-        for round_res in game_res.round_results {
-            if round_res.winner == round_res.starting_player {
-                println!(
-                    "starting player won with rules {:?} and result {}",
-                    round_res.rules,
-                    round_res.player_results.get(&round_res.winner).unwrap()
-                );
-            }
-        }
-    }
+    let res = Chicago::run_n(&GameConfig::new(NUM_PLAYERS), NUM_ROUNDS);
+    let (report_pickup, report_laydown) = report_many(res);
+    write_csv(report_pickup, PathBuf::from("results/chicago.csv")).unwrap();
 }

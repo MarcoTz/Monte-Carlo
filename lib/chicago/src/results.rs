@@ -13,8 +13,15 @@ pub enum RoundEnd {
     Normal { loser: String },
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub enum RoundType {
+    Pickup,
+    Laydown,
+}
+
 #[derive(Debug)]
 pub struct RoundResult {
+    pub round_type: RoundType,
     pub winner: String,
     pub starting_player: String,
     pub player_results: HashMap<String, u64>,
